@@ -11,10 +11,10 @@ with many additional modifications having gone into it since.
 
 ### Manually installing using `package.el`
 
-Ensure that you have added MELPA to your package archives.  For instance by
+Ensure that you have added MELPA to your package archives. For instance by
 having the following in your Emacs configuration.
 
-```lisp
+```elisp
 (require 'package)
 (add-to-list 'package-archives
              '("melpa" . "http://melpa.org/packages/") t)
@@ -22,13 +22,14 @@ having the following in your Emacs configuration.
 
 Then update the local package list using `M-x package-refresh-contents RET`.
 After this your can install `benchmark-init` by running `M-x package-install
-RET benchmark-init RET`.  After installation completes you need to add the
+RET benchmark-init RET`. After installation completes you need to add the
 following near the beginning of your configuration file but after setting up
 `package`.
 
-```lisp
+```elisp
 (require 'benchmark-init)
 ;; To disable collection of benchmark data after init is done.
+(benchmark-init/activate)
 (add-hook 'after-init-hook 'benchmark-init/deactivate)
 ```
 
@@ -37,44 +38,50 @@ following near the beginning of your configuration file but after setting up
 Add the following as early as possible to your Emacs configuration, but after
 setting up `use-package`.
 
-```lisp
+```elisp
 (use-package benchmark-init
-  :ensure t
+  :straight (:repo "KarimAziev/benchmark-init-el"
+                   :type git
+                   :branch "master"
+                   :flavor nil
+                   :host github)
+  :bind ([f7] . benchmark-init-show-results)
+  :demand t
   :config
-  ;; To disable collection of benchmark data after init is done.
-  (add-hook 'after-init-hook 'benchmark-init/deactivate))
+  (declare-function benchmark-init/activate "benchmark-init")
+  (benchmark-init/activate))
 ```
 
 ### Using el-get
 
-If you are not using *el-get* to manage your Emacs packages you can skip this
+If you are not using _el-get_ to manage your Emacs packages you can skip this
 section.
 
 Since benchmark-init must be activated as early as possible so that it can
-measure calls to load and require it should be loaded before *el-get* starts
-bringing in other packages.  To achieve that, add something like the following
+measure calls to load and require it should be loaded before _el-get_ starts
+bringing in other packages. To achieve that, add something like the following
 snippet as early as possible in your Emacs initialization script, before
-calling *el-get*.  Replace `/path/to/el-get` with the path to your *el-get*
+calling _el-get_. Replace `/path/to/el-get` with the path to your _el-get_
 directory.
 
-```lisp
+```elisp
 (load "/path/to/el-get/benchmark-init/benchmark-init.el"
       'no-error nil 'no-suffix)
 ```
 
 The first time you start Emacs after adding this nothing will be benchmarked
-since *el-get* will only install the package.  Simply quit and restart Emacs
+since _el-get_ will only install the package. Simply quit and restart Emacs
 and everything should be benchmarked from now on.
 
 ### Manual installation
 
-Run `make` inside the directory where you installed *benchmark-init*, this will
-produce the `benchmark-init-loaddefs.el` file.  Then place the following code
-as early as possible in your Emacs initialization script.  Replace
+Run `make` inside the directory where you installed _benchmark-init_, this will
+produce the `benchmark-init-loaddefs.el` file. Then place the following code
+as early as possible in your Emacs initialization script. Replace
 `/path/to/benchmark-init` with the path to the directory where you put
-*benchmark-init*.
+_benchmark-init_.
 
-```lisp
+```elisp
 (add-to-list 'load-path "/path/to/benchmark-init/")
 (require 'benchmark-init-loaddefs)
 (benchmark-init/activate)
@@ -86,7 +93,7 @@ Data collection will begin immediately after the call to
 ## Usage
 
 There are two ways in which benchmark-init's results can be presented, as a
-table or in a tree.  The table can be displayed by running:
+table or in a tree. The table can be displayed by running:
 
 - benchmark-init/show-durations-tabulated
 
@@ -103,8 +110,8 @@ Which will bring up the results in a tabulated list:
 | ~/.emacs.d/benchmark-init.el | load    |      1 |        1 |
 ```
 
-The *ms* column lists the amount of time spent loading the entry itself and
-*total ms* is the duration spent loading the entry and its dependencies.  In
+The _ms_ column lists the amount of time spent loading the entry itself and
+_total ms_ is the duration spent loading the entry and its dependencies. In
 the tree mode each entry will only display the time spent loading the entry
 itself, not including children.
 
