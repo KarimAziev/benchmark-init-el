@@ -157,37 +157,42 @@ Slots:
 
 ;; Benchmark injection
 
-(defadvice require
-  (around build-require-durations (feature &optional filename noerror) activate)
-  "Record the time taken to require FEATURE."
-  (let* ((name (symbol-name feature))
+(defun benchmark-init-build-require-durations (orig-fn feature &rest args)
+  "Record the time taken to require FEATURE.
+ORIG-FN expected to be the `require' function and ARGS is the rest
+of arguments for `require'."
+  (let* ((name
+          (symbol-name feature))
          (already-loaded (memq feature features))
          (should-record-p (lambda ()
-                            (and (not already-loaded) (memq feature features)))))
-    (benchmark-init/measure-around name 'require ad-do-it should-record-p)))
+                            (and (not already-loaded)
+                                 (memq feature features)))))
+    (benchmark-init/measure-around name 'require (apply orig-fn feature args)
+                                   should-record-p)))
 
-(defadvice load
-  (around build-load-durations (file &optional noerror nomessage nosuffix
-                                     must-suffix) activate)
-  "Record the time taken to load FILE."
+(defun benchmark-init-build-load-durations (orig-fn file &rest args)
+  "Advice to record the time taken to load FILE.
+ORIG-FN expected to be the `load' function and ARGS is
+the rest of arguments for `load'."
   (let ((name (abbreviate-file-name file))
         (should-record-p (lambda () t)))
-    (benchmark-init/measure-around name 'load ad-do-it should-record-p)))
+    (benchmark-init/measure-around name 'load
+                                   (apply orig-fn file args)
+                                   should-record-p)))
 
-;; Benchmark control
-
+;;;###autoload
 (defun benchmark-init/deactivate ()
   "Deactivate benchmark-init."
   (interactive)
-  (ad-deactivate 'require)
-  (ad-deactivate 'load))
+  (advice-remove 'require #'benchmark-init-build-require-durations)
+  (advice-remove 'load #'benchmark-init-build-load-durations))
 
 ;;;###autoload
 (defun benchmark-init/activate ()
   "Activate benchmark-init and start collecting data."
   (interactive)
-  (ad-activate 'require)
-  (ad-activate 'load))
+  (advice-add 'require :around #'benchmark-init-build-require-durations)
+  (advice-add 'load :around #'benchmark-init-build-load-durations))
 
 ;; Obsolete functions
 
