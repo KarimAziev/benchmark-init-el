@@ -40,6 +40,9 @@
 (eval-when-compile
   (require 'benchmark-init))
 
+(declare-function benchmark-init/node-root-p "benchmark-init")
+(declare-function benchmark-init/node-duration-adjusted "benchmark-init")
+(declare-function benchmark-init/flatten "benchmark-init")
 ;; Faces
 
 (defgroup benchmark-init/faces nil
