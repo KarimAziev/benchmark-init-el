@@ -50,6 +50,7 @@
   :group 'benchmark-init
   :group 'faces)
 
+
 (defface benchmark-init/header-face
   '((t :inherit font-lock-keyword-face :bold t))
   "Face for benchmark init header."
@@ -75,14 +76,17 @@
 (defconst benchmark-init/buffer-name "*Benchmark Init Results %s*"
   "Name of benchmark-init list buffer.")
 
+
 (defconst benchmark-init/list-format
   [("Module" 65 t)
    ("Type" 7 t)
-   ("ms" 7 (lambda (a b) (< (string-to-number (aref (cadr a) 2))
-                            (string-to-number (aref (cadr b) 2))))
+   ("ms" 7 (lambda (a b)
+             (< (string-to-number (aref (cadr a) 2))
+                (string-to-number (aref (cadr b) 2))))
     :right-align t)
-   ("total ms" 7 (lambda (a b) (< (string-to-number (aref (cadr a) 3))
-                                  (string-to-number (aref (cadr b) 3))))
+   ("total ms" 7 (lambda (a b)
+                   (< (string-to-number (aref (cadr a) 3))
+                      (string-to-number (aref (cadr b) 3))))
     :right-align t)]
   "Benchmark list format.")
 
@@ -98,8 +102,9 @@
 (defvar benchmark-init/tree-mode-map
   (let ((map (copy-keymap special-mode-map)))
     (set-keymap-parent map button-buffer-map)
-    (define-key map "n" 'next-line)
-    (define-key map "p" 'previous-line)
+    (define-key map "n" #'next-line)
+    (define-key map "p" #'previous-line)
+    (define-key map "t" #'benchmark-init/show-durations-tree)
     map)
   "Local keymap for `benchmark-init/tree-mode' buffers.")
 
@@ -109,9 +114,30 @@
   "Benchmark Init Tabulated"
   "Mode for displaying benchmark-init results in a table."
   (setq tabulated-list-format benchmark-init/list-format)
-  (setq tabulated-list-padding 2)
+  (setq tabulated-list-padding 0)
   (setq tabulated-list-sort-key benchmark-init/list-sort-key)
-  (tabulated-list-init-header))
+  (tabulated-list-init-header)
+  (use-local-map (make-composed-keymap benchmark-init/tree-mode-map
+                                       tabulated-list-mode-map)))
+
+(declare-function find-library-name "find-func")
+
+(defun benchmark-init/find-library-action (name)
+  "Locate and display a specified library in a new or existing window.
+
+Argument NAME is a string that represents the NAME of the library to be found."
+  (require 'find-func)
+  (if-let ((file (find-library-name name)))
+      (let ((current-window (selected-window)))
+        (with-selected-window current-window
+          (when-let ((wnd (or (window-right current-window)
+                              (window-left current-window)
+                              (split-window-right nil current-window))))
+            (with-selected-window wnd
+              (let ((buff (or (get-file-buffer file)
+                              (find-file-noselect file))))
+                (pop-to-buffer-same-window buff))))))
+    (message "Couldn't find %s" name)))
 
 (defun benchmark-init/list-entries ()
   "Generate benchmark-init list entries from durations tree."
@@ -122,8 +148,12 @@
              (type (symbol-name (cdr (assq :type value))))
              (duration (round (cdr (assq :duration value))))
              (duration-adj (round (cdr (assq :duration-adj value)))))
-         (push (list name `[,name ,type ,(number-to-string duration-adj)
-                                  ,(number-to-string duration)]) entries)))
+         (push (list name `[,(list name 'action
+                                   #'benchmark-init/find-library-action
+                                   'button-data name)
+                            ,type ,(number-to-string duration-adj)
+                            ,(number-to-string duration)])
+               entries)))
      (cdr (benchmark-init/flatten benchmark-init/durations-tree)))
     entries))
 
@@ -133,12 +163,14 @@
   (interactive)
   (unless (featurep 'tabulated-list)
     (require 'tabulated-list))
-  (let ((buffer-name (format benchmark-init/buffer-name "Tabulated")))
-    (with-current-buffer (get-buffer-create buffer-name)
+  (let* ((buff-name (format benchmark-init/buffer-name "Tabulated"))
+         (buffer (get-buffer-create buff-name)))
+    (with-current-buffer buffer
       (benchmark-init/tabulated-mode)
       (setq tabulated-list-entries 'benchmark-init/list-entries)
-      (tabulated-list-print t)
-      (switch-to-buffer (current-buffer)))))
+      (tabulated-list-print t))
+    (unless (get-buffer-window buffer)
+      (pop-to-buffer buffer))))
 
 ;; Tree presentation
 
@@ -200,13 +232,24 @@
 (put 'benchmark-init/tree-mode 'mode-class 'special)
 
 ;;;###autoload
+(defun benchmark-init-show-results ()
+  "Display benchmark results in a tabulated or tree format."
+  (interactive)
+  (cond ((eq major-mode 'benchmark-init/tabulated-mode)
+         (benchmark-init/show-durations-tree))
+        (t (benchmark-init/show-durations-tabulated))))
+
+;;;###autoload
 (defun benchmark-init/show-durations-tree ()
   "Show durations in call-tree."
   (interactive)
-  (let ((buffer-name (format benchmark-init/buffer-name "Tree")))
-    (switch-to-buffer (get-buffer-create buffer-name))
-    (if (not (eq major-mode 'benchmark-init/tree-mode))
-        (benchmark-init/tree-mode))))
+  (let* ((buff-name (format benchmark-init/buffer-name "Tree"))
+         (buff (get-buffer-create buff-name)))
+    (with-current-buffer buff
+      (when (not (eq major-mode 'benchmark-init/tree-mode))
+        (benchmark-init/tree-mode)))
+    (unless (get-buffer-window buff)
+      (pop-to-buffer buff))))
 
 ;; Obsolete functions
 
