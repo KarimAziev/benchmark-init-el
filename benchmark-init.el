@@ -180,6 +180,17 @@ the rest of arguments for `load'."
                                    should-record-p)))
 
 ;;;###autoload
+(defun benchmark-init/reset ()
+  "Reset the benchmark durations tree to nil."
+  (interactive)
+  (setq benchmark-init/durations-tree (make-benchmark-init/node
+                                       :name 'benchmark-init/root
+                                       :type nil
+                                       :duration 0
+                                       :children nil))
+  (setq benchmark-init/current-node benchmark-init/durations-tree))
+
+;;;###autoload
 (defun benchmark-init/deactivate ()
   "Deactivate benchmark-init."
   (interactive)
