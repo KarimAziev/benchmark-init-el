@@ -127,10 +127,10 @@
 
 Argument NAME is a string that represents the NAME of the library to be found."
   (require 'find-func)
-  (if-let ((file (find-library-name name)))
+  (if-let* ((file (find-library-name name)))
       (let ((current-window (selected-window)))
         (with-selected-window current-window
-          (when-let ((wnd (or (window-right current-window)
+          (when-let* ((wnd (or (window-right current-window)
                               (window-left current-window)
                               (split-window-right nil current-window))))
             (with-selected-window wnd
